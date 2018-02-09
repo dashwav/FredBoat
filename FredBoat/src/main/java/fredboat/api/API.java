@@ -27,14 +27,19 @@ package fredboat.api;
 
 import fredboat.Config;
 import fredboat.FredBoat;
+import fredboat.audio.player.GuildPlayer;
 import fredboat.audio.player.PlayerRegistry;
+import fredboat.audio.queue.AudioTrackContext;
 import fredboat.feature.metrics.Metrics;
+import net.dv8tion.jda.core.entities.Guild;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.Spark;
+
+
 
 
 public class API {
@@ -87,6 +92,31 @@ public class API {
 
             root.put("shards", a);
             root.put("global", g);
+
+            return root;
+        });
+
+        Spark.get("/history", (req, res) -> {
+            Metrics.apiServed.labels("/history").inc();
+            res.type("application/json");
+
+            JSONObject root = new JSONObject();
+            JSONArray a = new JSONArray();
+            Guild a_irl = FredBoat.getGuildById(148606162810568704L);
+            GuildPlayer player = PlayerRegistry.getOrCreate(a_irl);
+            int trackCount = player.getTrackCountInHistory();
+            int listEnd = Math.min(200, trackCount);
+            for (AudioTrackContext atc: player.getTracksInHistory(0, listEnd)) {
+                JSONObject fbHistory = new JSONObject();
+                fbHistory.put("id", atc.getTrackId())
+                        .put("user", atc.getMember().getEffectiveName())
+                        .put("title", atc.getEffectiveTitle())
+                        .put("duration", atc.getEffectiveDuration())
+                        .put("url", atc.getTrack().getInfo().uri);
+                a.put(fbHistory);
+            }
+
+            root.put("history", a);
 
             return root;
         });
